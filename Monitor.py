@@ -56,6 +56,24 @@ class Monitor:
         self.prev_disk_read = disk_io.read_bytes
         self.prev_disk_write = disk_io.write_bytes
         
+        # PARTICIONES DE DISCO
+        particiones = []
+        for particion in psutil.disk_partitions():
+            try:
+                uso = psutil.disk_usage(particion.mountpoint)
+                particiones.append({
+                    'device': particion.device,
+                    'mountpoint': particion.mountpoint,
+                    'fstype': particion.fstype,
+                    'total': uso.total,
+                    'used': uso.used,
+                    'free': uso.free,
+                    'percent': uso.percent
+                })
+            except PermissionError:
+                # Ignorar particiones sin permisos de acceso
+                continue
+        
         # BATERIA
         battery = psutil.sensors_battery()
         battery_info = None
@@ -86,6 +104,7 @@ class Monitor:
             'mem': mem_info,
             'net': (tx_speed, rx_speed),
             'disk_io': (read_s, write_s),
+            'particiones': particiones,
             'battery': battery_info,
             'procesos': top_procesos
         }, None
@@ -129,9 +148,9 @@ def mostrar_metricas(metricas):
     print(f"{BOLD}{VERDE}{'='*80}{RESET}")
     print(f"{BOLD}{CYAN}  MONITOR DEL SISTEMA  - {time.strftime('%Y-%m-%d %H:%M:%S')}{RESET}")
     print(f"{VERDE}{'='*80}{RESET}\n")
-
+    
     # CPU
-    print(f"{BOLD}{CYAN}[CPU USAGE - {len(metricas['cpu_cores'])} cores]{RESET}")
+    print(f"\n{BOLD}{CYAN}[CPU USAGE - {len(metricas['cpu_cores'])} cores]{RESET}")
     for idx, uso in enumerate(metricas['cpu_cores']):
         color = obtener_color_barra(uso)
         barra = crear_barra(uso, 30)
@@ -145,17 +164,27 @@ def mostrar_metricas(metricas):
     print(f"  Usado: {formatear_bytes(mem_usado)} / {formatear_bytes(mem_total)} ({mem_perc:.1f}%)")
     print(f"  {color}{barra}{RESET}")
 
-    # Red
-    print(f"\n{BOLD}{CYAN}[RED]{RESET}")
-    tx, rx = metricas['net']
-    print(f"  {AMARILLO}↑ TX:{RESET} {formatear_bytes(tx)}/s")
-    print(f"  {AMARILLO}↓ RX:{RESET} {formatear_bytes(rx)}/s")
-
     # Disco I/O
     print(f"\n{BOLD}{CYAN}[DISCO I/O]{RESET}")
     read, write = metricas['disk_io']
     print(f"  {AMARILLO}Read: {RESET} {formatear_bytes(read)}/s")
     print(f"  {AMARILLO}Write:{RESET} {formatear_bytes(write)}/s")
+
+    # Particiones de Disco
+    print(f"\n{BOLD}{CYAN}[PARTICIONES DE DISCO]{RESET}")
+    for part in metricas['particiones']:
+        color = obtener_color_barra(part['percent'])
+        barra = crear_barra(part['percent'], 30)
+        print(f"  {AMARILLO}{part['mountpoint']}{RESET} ({part['device']})")
+        print(f"    {formatear_bytes(part['used'])} / {formatear_bytes(part['total'])} ({part['percent']:.1f}%)")
+        print(f"    {color}{barra}{RESET}")
+        print(f"    Libre: {formatear_bytes(part['free'])} | Tipo: {part['fstype']}")
+
+    # Red
+    print(f"\n{BOLD}{CYAN}[RED]{RESET}")
+    tx, rx = metricas['net']
+    print(f"  {AMARILLO}↑ TX:{RESET} {formatear_bytes(tx)}/s")
+    print(f"  {AMARILLO}↓ RX:{RESET} {formatear_bytes(rx)}/s")
 
     # Batería
     if metricas['battery']:
