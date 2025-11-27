@@ -20,7 +20,7 @@ class Monitor:
     def __init__(self):
         """Inicializa los metadatos del sistema y los contadores previos."""
         # Información estática del sistema
-        self.os_type = platform.system()  # Ej: 'Windows', 'Linux', 'Darwin'
+        self.os_type = platform.system()  # Ej: 'Windows', 'Linux'
         self.hostname = platform.node()   # Nombre del equipo
         self.kernel = platform.release()  # Versión del kernel/OS
         
